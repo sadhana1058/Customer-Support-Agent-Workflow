@@ -1,0 +1,265 @@
+{
+  "name": "Inbox Customer Support Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -448,
+        -144
+      ],
+      "id": "e78a7507-01e2-45c3-945d-de0b2540c5ae",
+      "name": "Gmail Trigger",
+      "executeOnce": false,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "mVfXDzq0By9Q1xsn",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputText": "=subject: {{ $json.headers.subject }}\ndate : {{ $json.headers.date }}\nbody : {{ $json.text }}",
+        "categories": {
+          "categories": [
+            {
+              "category": "customer support",
+              "description": "Emails requesting help, troubleshooting, or guidance for a product or service. Usually describe issues like login errors, bugs, or malfunctioning features. Common keywords: error, issue, problem, help, access, support, fix, reset, troubleshoot."
+            },
+            {
+              "category": "finance/billing",
+              "description": "Emails about payments, invoices, refunds, or subscriptions. The sender wants to confirm, dispute, or update financial details. Common keywords: invoice, payment, refund, billing, charge, subscription, renewal, receipt."
+            },
+            {
+              "category": "high priority",
+              "description": "Urgent or time-sensitive emails about critical issues or outages requiring immediate attention. Common keywords: urgent, ASAP, critical, outage, down, immediate, emergency, escalation."
+            },
+            {
+              "category": "promotion",
+              "description": "Marketing or sales-focused emails promoting offers, discounts, or new products. Tone is upbeat and persuasive. Common keywords: sale, offer, discount, promotion, new feature, upgrade, limited time, exclusive."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.textClassifier",
+      "typeVersion": 1.1,
+      "position": [
+        -304,
+        -176
+      ],
+      "id": "c34c9d1e-79c5-40a3-b87d-c3edc71beec6",
+      "name": "Text Classifier"
+    },
+    {
+      "parameters": {
+        "model": "gpt-oss:20b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmOllama",
+      "typeVersion": 1,
+      "position": [
+        -320,
+        256
+      ],
+      "id": "796f45f4-cc2a-495f-8eb7-9601a15f76d1",
+      "name": "Ollama Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "6xi4fSALOcm4cwlu",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $('Gmail Trigger').item.json.id }}",
+        "labelIds": [
+          "Label_3236477048639911718"
+        ]
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        80,
+        -192
+      ],
+      "id": "1589f692-e471-44b1-adff-c59d503b3f18",
+      "name": "Add label to message",
+      "webhookId": "a3dd3b06-a536-4c38-9d9f-c3c8171a89d5",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "mVfXDzq0By9Q1xsn",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=From : {{ $('Text Classifier').item.json.headers.from }}\nSubject:{{ $('Text Classifier').item.json.headers.subject }}\ndate : {{ $('Text Classifier').item.json.headers.date }}\nBody:{{ $('Text Classifier').item.json.text }}\n",
+        "options": {
+          "systemMessage": "You are Jayamathura Support Assistant, a friendly and humble virtual helper for Jayamathura Professional Solutions.  \n\nWhen you start a conversation, always include salutations and begin with:  \n“**Thanks for reaching out to Jayamathura on [current date]! 😊**”\n\nThen continue with a warm, professional, and slightly witty tone.  \n\nYour goals:  \n- Provide accurate, concise, and friendly responses.  \n- Keep a personable, human-like style.  \n- If the requested information isn’t available or cannot be answered automatically, respond with:  \n\n“This request will be handled by **Saravanan G** within 8 hours.  \nIf you haven’t heard back after that (we’re likely handling high volumes), please call **Jayamathura Owner Saravanan** directly at 📞 **9880288853**.”  \n\nAlways close every response with:  \n“**– Krish, AI Assistant 🤖**”  \n\nMaintain a tone that is friendly and professional — never robotic or overly formal.  \nUse ** for emphasis instead of bold markdown, and use /n properly for new lines.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        256,
+        -192
+      ],
+      "id": "2845686f-de71-41ae-b94d-bec6c317c388",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "qwen2:7b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        256,
+        80
+      ],
+      "id": "f5556f6f-c49b-41cc-95d2-a34727ed8bcc",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "6xi4fSALOcm4cwlu",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "reply",
+        "messageId": "={{ $('Text Classifier').item.json.id }}",
+        "message": "={{ $json.output }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        576,
+        -192
+      ],
+      "id": "ddf93b0a-7061-4481-adb5-bd89a8447977",
+      "name": "Reply to a message",
+      "webhookId": "aa91b67a-5263-40c4-9e64-cbedea0e83cd",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "mVfXDzq0By9Q1xsn",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        272,
+        496
+      ],
+      "typeVersion": 1,
+      "id": "bbbb1f9e-c3a9-4634-aa88-2dc2c2fe3640",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Text Classifier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Text Classifier",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Text Classifier": {
+      "main": [
+        [
+          {
+            "node": "Add label to message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add label to message": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Reply to a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "62cf6d25-a767-459d-a3fb-f7f846d58e46",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "12daed274cb6196796c413f0b59cec1ed81b1ed5e9f1918e7f4615bba3fbf7ec"
+  },
+  "id": "ucZIQdbQkbJnjvV4",
+  "tags": []
+}
